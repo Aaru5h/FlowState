@@ -25,7 +25,7 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-export function buildAuthUrl(clientId: string, redirectUri: string, codeChallenge: string): string {
+export function buildAuthUrl(clientId: string, redirectUri: string, codeChallenge: string, state: string): string {
   const scopes = [
     'streaming',
     'user-read-email',
@@ -41,6 +41,7 @@ export function buildAuthUrl(clientId: string, redirectUri: string, codeChalleng
     redirect_uri: redirectUri,
     code_challenge_method: 'S256',
     code_challenge: codeChallenge,
+    state,
   });
 
   return `https://accounts.spotify.com/authorize?${params}`;

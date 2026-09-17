@@ -6,6 +6,10 @@ import { generateCodeVerifier, generateCodeChallenge, buildAuthUrl } from '@/lib
 const CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID ?? '';
 const REDIRECT_URI = process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI ?? '';
 
+function setTempCookie(name: string, value: string) {
+  document.cookie = `${name}=${value}; path=/; max-age=600; samesite=lax${location.protocol === 'https:' ? '; secure' : ''}`;
+}
+
 export function useSpotifyAuth() {
   const store = useSpotifyStore();
 
@@ -15,9 +19,11 @@ export function useSpotifyAuth() {
       return;
     }
     const verifier = generateCodeVerifier();
-    sessionStorage.setItem('spotify_code_verifier', verifier);
+    const state = generateCodeVerifier();
+    setTempCookie('spotify_code_verifier', verifier);
+    setTempCookie('spotify_oauth_state', state);
     const challenge = await generateCodeChallenge(verifier);
-    window.location.href = buildAuthUrl(CLIENT_ID, REDIRECT_URI, challenge);
+    window.location.href = buildAuthUrl(CLIENT_ID, REDIRECT_URI, challenge, state);
   }, [store]);
 
   const checkSession = useCallback(async () => {
@@ -26,7 +32,6 @@ export function useSpotifyAuth() {
       if (!res.ok) return;
       const data = await res.json();
       store.setLoggedIn(true);
-      store.setAccessToken(data.accessToken);
       store.setAccountTier(data.product === 'premium' ? 'premium' : 'free');
     } catch {
       // not logged in

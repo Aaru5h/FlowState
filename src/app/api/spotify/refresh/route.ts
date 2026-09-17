@@ -48,5 +48,5 @@ export async function POST() {
     });
   }
 
-  return NextResponse.json({ accessToken: tokens.access_token });
+  return NextResponse.json({ ok: true });
 }

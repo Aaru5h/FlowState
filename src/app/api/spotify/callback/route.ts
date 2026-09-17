@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-// TODO: Fill SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.local
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID ?? '';
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET ?? '';
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI ?? '';
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
-  const codeVerifier = request.nextUrl.searchParams.get('code_verifier');
+  const state = request.nextUrl.searchParams.get('state');
 
   if (!code) {
     return NextResponse.redirect(new URL('/?spotify_error=no_code', request.url));
   }
+
+  const cookieStore = cookies();
+
+  const savedState = cookieStore.get('spotify_oauth_state')?.value;
+  if (!state || !savedState || state !== savedState) {
+    return NextResponse.redirect(new URL('/?spotify_error=state_mismatch', request.url));
+  }
+  cookieStore.delete('spotify_oauth_state');
+
+  const codeVerifier = cookieStore.get('spotify_code_verifier')?.value;
+  cookieStore.delete('spotify_code_verifier');
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -37,7 +47,6 @@ export async function GET(request: NextRequest) {
 
   const tokens = await tokenRes.json();
 
-  const cookieStore = cookies();
   cookieStore.set('spotify_access_token', tokens.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

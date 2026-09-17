@@ -19,7 +19,6 @@ export async function GET() {
 
   const user = await res.json();
   return NextResponse.json({
-    accessToken,
     product: user.product,
     displayName: user.display_name,
   });

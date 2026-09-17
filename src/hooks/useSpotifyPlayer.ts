@@ -27,12 +27,23 @@ interface SpotifyPlayer {
   addListener: (event: string, cb: (data: any) => void) => void;
 }
 
+async function fetchToken(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/spotify/token');
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function useSpotifyPlayer() {
   const store = useSpotifyStore();
   const playerRef = useRef<SpotifyPlayer | null>(null);
 
   useEffect(() => {
-    if (store.accountTier !== 'premium' || !store.accessToken) return;
+    if (store.accountTier !== 'premium' || !store.isLoggedIn) return;
 
     const script = document.createElement('script');
     script.src = 'https://sdk.scdn.co/spotify-player.js';
@@ -42,8 +53,8 @@ export function useSpotifyPlayer() {
     window.onSpotifyWebPlaybackSDKReady = () => {
       const player = new window.Spotify.Player({
         name: 'Flowstate',
-        getOAuthToken: (cb) => {
-          const token = useSpotifyStore.getState().accessToken;
+        getOAuthToken: async (cb) => {
+          const token = await fetchToken();
           if (token) cb(token);
         },
         volume: 0.5,
@@ -90,17 +101,15 @@ export function useSpotifyPlayer() {
       script.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.accountTier, store.accessToken]);
+  }, [store.accountTier, store.isLoggedIn]);
 
   const play = useCallback(async (contextUri?: string) => {
-    const { accessToken, deviceId } = useSpotifyStore.getState();
-    if (!accessToken || !deviceId) return;
-    const body: Record<string, string> = {};
-    if (contextUri) body.context_uri = contextUri;
-    await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+    const { deviceId } = useSpotifyStore.getState();
+    if (!deviceId) return;
+    await fetch('/api/spotify/play', {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, contextUri }),
     });
   }, []);
 

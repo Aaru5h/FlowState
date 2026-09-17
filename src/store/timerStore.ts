@@ -40,11 +40,22 @@ function loadState(): Partial<TimerState> {
   try {
     const raw = localStorage.getItem('flowstate-timer');
     if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (parsed.dayStats?.date !== today()) {
-      parsed.dayStats = { date: today(), completedPomodoros: 0, totalFocusSeconds: 0 };
+    const p = JSON.parse(raw);
+    const result: Partial<TimerState> = {};
+    if (typeof p.phase === 'string' && ['idle', 'working', 'break', 'longBreak'].includes(p.phase)) result.phase = p.phase;
+    if (typeof p.secondsLeft === 'number' && p.secondsLeft >= 0) result.secondsLeft = p.secondsLeft;
+    if (typeof p.totalSeconds === 'number' && p.totalSeconds > 0) result.totalSeconds = p.totalSeconds;
+    if (typeof p.completedPomodoros === 'number') result.completedPomodoros = p.completedPomodoros;
+    if (typeof p.soundEnabled === 'boolean') result.soundEnabled = p.soundEnabled;
+    if (p.config && typeof p.config.workMinutes === 'number' && typeof p.config.breakMinutes === 'number' && typeof p.config.longBreakMinutes === 'number') {
+      result.config = { workMinutes: p.config.workMinutes, breakMinutes: p.config.breakMinutes, longBreakMinutes: p.config.longBreakMinutes };
     }
-    return parsed;
+    if (p.dayStats && typeof p.dayStats.completedPomodoros === 'number' && typeof p.dayStats.totalFocusSeconds === 'number') {
+      result.dayStats = p.dayStats.date === today()
+        ? { date: today(), completedPomodoros: p.dayStats.completedPomodoros, totalFocusSeconds: p.dayStats.totalFocusSeconds }
+        : { date: today(), completedPomodoros: 0, totalFocusSeconds: 0 };
+    }
+    return result;
   } catch {
     return {};
   }
