@@ -122,7 +122,13 @@ export function useSpotifyPlayer() {
   }, []);
 
   const skip = useCallback(async () => {
-    playerRef.current?.nextTrack();
+    const { deviceId } = useSpotifyStore.getState();
+    if (!deviceId) return;
+    await fetch('/api/spotify/next', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId }),
+    });
   }, []);
 
   return { play, pause, resume, skip, player: playerRef };
