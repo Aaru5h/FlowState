@@ -86,6 +86,7 @@ export function useSpotifyPlayer() {
         getOAuthToken: async (cb) => {
           const token = await fetchToken();
           if (token) cb(token);
+          else store.setMusicError('Spotify session expired — disconnect and reconnect');
         },
         volume: 0.5,
       });
@@ -122,7 +123,13 @@ export function useSpotifyPlayer() {
         store.setSdkReady(false);
       });
 
-      p.connect();
+      // SDK can't run here (mobile browsers, no DRM/EME): fall back to the embed instead of hanging on "Connecting..."
+      const fallback = () => {
+        store.setAccountTier('free');
+        store.setSdkReady(false);
+      };
+      p.addListener('initialization_error', fallback);
+      p.connect().then((ok) => { if (!ok) fallback(); });
       player = p;
     };
 

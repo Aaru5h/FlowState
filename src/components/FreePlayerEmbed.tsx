@@ -21,5 +21,5 @@ export default function FreePlayerEmbed() {
         <p className="text-sm text-stone-400 p-3">Loading Spotify player...</p>
       )}
     </div>
-  );
+  )
 }
