@@ -17,7 +17,6 @@ interface TimerState {
   completedPomodoros: number;
   dayStats: DayStats;
   soundEnabled: boolean;
-  deepFocus: boolean; // Deep Focus Sprint: Do Not Disturb follows focus sessions
 
   setPreset: (key: string) => void;
   setCustomWork: (minutes: number) => void;
@@ -29,7 +28,6 @@ interface TimerState {
   reset: () => void;
   advancePhase: () => void;
   toggleSound: () => void;
-  toggleDeepFocus: () => void;
   hydrate: () => void;
   persist: () => void;
 }
@@ -52,7 +50,6 @@ function loadState(): Partial<TimerState> {
     if (typeof p.totalSeconds === 'number' && p.totalSeconds > 0) result.totalSeconds = p.totalSeconds;
     if (typeof p.completedPomodoros === 'number') result.completedPomodoros = p.completedPomodoros;
     if (typeof p.soundEnabled === 'boolean') result.soundEnabled = p.soundEnabled;
-    if (typeof p.deepFocus === 'boolean') result.deepFocus = p.deepFocus;
     if (typeof p.endsAt === 'number') { result.endsAt = p.endsAt; result.isRunning = true; }
     if (p.config && typeof p.config.workMinutes === 'number' && typeof p.config.breakMinutes === 'number' && typeof p.config.longBreakMinutes === 'number') {
       result.config = { workMinutes: p.config.workMinutes, breakMinutes: p.config.breakMinutes, longBreakMinutes: p.config.longBreakMinutes };
@@ -78,7 +75,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   completedPomodoros: 0,
   dayStats: { date: today(), completedPomodoros: 0, totalFocusSeconds: 0 },
   soundEnabled: true,
-  deepFocus: false,
 
   setPreset: (key) => {
     const c = PRESETS[key];
@@ -193,11 +189,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     get().persist();
   },
 
-  toggleDeepFocus: () => {
-    set({ deepFocus: !get().deepFocus });
-    get().persist();
-  },
-
   hydrate: () => {
     const saved = loadState();
     if (Object.keys(saved).length > 0) set(saved);
@@ -205,9 +196,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
 
   persist: () => {
     if (typeof window === 'undefined') return;
-    const { phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, dayStats, soundEnabled, deepFocus } = get();
+    const { phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, dayStats, soundEnabled } = get();
     localStorage.setItem('flowstate-timer', JSON.stringify({
-      phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, dayStats, soundEnabled, deepFocus,
+      phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, dayStats, soundEnabled,
     }));
   },
 }));
