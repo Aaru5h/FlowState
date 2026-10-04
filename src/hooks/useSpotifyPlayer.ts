@@ -79,12 +79,8 @@ export function useSpotifyPlayer() {
   useEffect(() => {
     if (store.accountTier !== 'premium' || !store.isLoggedIn) return;
 
-    const script = document.createElement('script');
-    script.src = 'https://sdk.scdn.co/spotify-player.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    window.onSpotifyWebPlaybackSDKReady = () => {
+    const init = () => {
+      player?.disconnect(); // never run two players: play() and pause() would target different devices
       const p = new window.Spotify.Player({
         name: 'Flowstate',
         getOAuthToken: async (cb) => {
@@ -130,10 +126,23 @@ export function useSpotifyPlayer() {
       player = p;
     };
 
+    // the SDK script only fires onSpotifyWebPlaybackSDKReady once, so load it once and reuse window.Spotify after
+    if (window.Spotify) init();
+    else {
+      window.onSpotifyWebPlaybackSDKReady = init;
+      if (!document.querySelector('script[src="https://sdk.scdn.co/spotify-player.js"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://sdk.scdn.co/spotify-player.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    }
+
     return () => {
       player?.disconnect();
       player = null;
-      script.remove();
+      store.setSdkReady(false);
+      store.setDeviceId(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.accountTier, store.isLoggedIn]);

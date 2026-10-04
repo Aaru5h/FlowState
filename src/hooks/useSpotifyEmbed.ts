@@ -11,6 +11,7 @@ declare global {
 
 // one shared controller: the hook is mounted once (FlowstateApp); FreePlayerEmbed imports loadPlaylist
 let controller: any = null;
+let iframeApi: any = null;
 
 export const play = () => controller?.play();
 export const pause = () => controller?.pause();
@@ -22,18 +23,17 @@ export function useSpotifyEmbed(containerId: string) {
   useEffect(() => {
     if (store.accountTier !== 'free') return;
 
-    const script = document.createElement('script');
-    script.src = 'https://open.spotify.com/embed/iframe-api/v1';
-    script.async = true;
-    document.body.appendChild(script);
-
-    window.onSpotifyIframeApiReady = (IFrameAPI: any) => {
+    const init = (IFrameAPI: any) => {
+      iframeApi = IFrameAPI;
       const container = document.getElementById(containerId);
       if (!container) return;
 
       const playlistId = useSpotifyStore.getState().selectedPlaylistId ?? '0vvXsWCC9xrXsKd4FyS8kM';
+      // createController replaces the element it's given; hand it a child so React's div stays put
+      const target = document.createElement('div');
+      container.replaceChildren(target);
       IFrameAPI.createController(
-        container,
+        target,
         {
           uri: `spotify:playlist:${playlistId}`,
           width: '100%',
@@ -46,8 +46,20 @@ export function useSpotifyEmbed(containerId: string) {
       );
     };
 
+    // the iframe API fires onSpotifyIframeApiReady only once per page; reuse it after
+    if (iframeApi) init(iframeApi);
+    else {
+      window.onSpotifyIframeApiReady = init;
+      if (!document.querySelector('script[src="https://open.spotify.com/embed/iframe-api/v1"]')) {
+        const script = document.createElement('script');
+        script.src = 'https://open.spotify.com/embed/iframe-api/v1';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    }
+
     return () => {
-      script.remove();
+      controller?.destroy();
       controller = null;
       store.setEmbedReady(false);
     };

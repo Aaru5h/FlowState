@@ -13,6 +13,9 @@ export default function MusicPanel() {
     return (
       <div className="p-4 rounded-2xl bg-white/60 backdrop-blur border border-stone-200/50 space-y-3">
         <p className="text-sm text-stone-500">Connect Spotify for music while you focus</p>
+        {musicError && (
+          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">{musicError}</p>
+        )}
         <button
           onClick={login}
           className="px-4 py-2 rounded-xl bg-[#1DB954] text-white text-sm font-medium 

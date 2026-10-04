@@ -7,6 +7,7 @@ import { usePlaybackSync } from '@/hooks/usePlaybackSync';
 import TimerCircle from './TimerCircle';
 import TimerControls from './TimerControls';
 import MusicPanel from './MusicPanel';
+import { useSpotifyStore } from '@/store/spotifyStore';
 
 export default function FlowstateApp() {
   const timer = useTimer();
@@ -15,10 +16,12 @@ export default function FlowstateApp() {
 
   usePlaybackSync(premium.play, premium.pause, premium.resume, embed.play, embed.pause);
 
+  // OAuth callback lands on /?spotify=connected or /?spotify_error=...; surface errors, then tidy the URL
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    const params = new URLSearchParams(location.search);
+    const error = params.get('spotify_error');
+    if (error) useSpotifyStore.getState().setMusicError(`Spotify login failed (${error.replace(/_/g, ' ')}) — try again`);
+    if (params.has('spotify') || error) history.replaceState(null, '', location.pathname);
   }, []);
 
   return (

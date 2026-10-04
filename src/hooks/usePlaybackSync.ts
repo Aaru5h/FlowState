@@ -43,6 +43,17 @@ export function usePlaybackSync(
         else if (isFree) embedPause();
       }
     });
-    return unsub;
+    // picking a playlist mid-focus switches the music now, not next session (free embed reloads in FreePlayerEmbed)
+    const unsubPlaylist = useSpotifyStore.subscribe((spotify, prev) => {
+      if (spotify.selectedPlaylistUri === prev.selectedPlaylistUri || !spotify.selectedPlaylistUri) return;
+      const { phase, isRunning } = useTimerStore.getState();
+      if (phase === 'working' && isRunning && spotify.accountTier === 'premium' && spotify.sdkReady) {
+        premiumPlay(spotify.selectedPlaylistUri);
+      }
+    });
+    return () => {
+      unsub();
+      unsubPlaylist();
+    };
   }, [premiumPlay, premiumPause, premiumResume, embedPlay, embedPause]);
 }
