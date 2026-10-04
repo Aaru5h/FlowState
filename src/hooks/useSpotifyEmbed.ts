@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useSpotifyStore } from '@/store/spotifyStore';
 
 declare global {
@@ -9,12 +9,18 @@ declare global {
   }
 }
 
+// one shared controller: the hook is mounted once (FlowstateApp); FreePlayerEmbed imports loadPlaylist
+let controller: any = null;
+
+export const play = () => controller?.play();
+export const pause = () => controller?.pause();
+export const loadPlaylist = (playlistId: string) => controller?.loadUri(`spotify:playlist:${playlistId}`);
+
 export function useSpotifyEmbed(containerId: string) {
   const store = useSpotifyStore();
-  const controllerRef = useRef<any>(null);
 
   useEffect(() => {
-    if (store.accountTier !== 'free' || store.sdkReady) return;
+    if (store.accountTier !== 'free') return;
 
     const script = document.createElement('script');
     script.src = 'https://open.spotify.com/embed/iframe-api/v1';
@@ -34,7 +40,7 @@ export function useSpotifyEmbed(containerId: string) {
           height: 152,
         },
         (ctrl: any) => {
-          controllerRef.current = ctrl;
+          controller = ctrl;
           store.setEmbedReady(true);
         },
       );
@@ -42,21 +48,11 @@ export function useSpotifyEmbed(containerId: string) {
 
     return () => {
       script.remove();
+      controller = null;
+      store.setEmbedReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.accountTier, containerId]);
 
-  const play = useCallback(() => {
-    controllerRef.current?.play();
-  }, []);
-
-  const pause = useCallback(() => {
-    controllerRef.current?.pause();
-  }, []);
-
-  const loadPlaylist = useCallback((playlistId: string) => {
-    controllerRef.current?.loadUri(`spotify:playlist:${playlistId}`);
-  }, []);
-
-  return { play, pause, loadPlaylist, controller: controllerRef };
+  return { play, pause, loadPlaylist };
 }

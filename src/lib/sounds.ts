@@ -12,6 +12,7 @@ export function playChime() {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 1.5);
+    osc.onended = () => ctx.close(); // browsers cap live AudioContexts
   } catch {
     // audio not available
   }

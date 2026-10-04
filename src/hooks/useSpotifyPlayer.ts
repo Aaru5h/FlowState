@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useSpotifyStore } from '@/store/spotifyStore';
 
 declare global {
@@ -29,7 +29,11 @@ interface SpotifyPlayer {
 
 async function fetchToken(): Promise<string | null> {
   try {
-    const res = await fetch('/api/spotify/token');
+    let res = await fetch('/api/spotify/token');
+    // access token cookie lives 1h; swap in a fresh one via the refresh token
+    if (res.status === 401 && (await fetch('/api/spotify/refresh', { method: 'POST' })).ok) {
+      res = await fetch('/api/spotify/token');
+    }
     if (!res.ok) return null;
     const data = await res.json();
     return data.accessToken ?? null;
@@ -38,9 +42,39 @@ async function fetchToken(): Promise<string | null> {
   }
 }
 
+// one shared player: the hook is mounted once (FlowstateApp); other components import the controls below
+let player: SpotifyPlayer | null = null;
+
+export async function play(contextUri?: string) {
+  const { deviceId } = useSpotifyStore.getState();
+  if (!deviceId) return;
+  await fetch('/api/spotify/play', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId, contextUri }),
+  });
+}
+
+export async function pause() {
+  await player?.pause();
+}
+
+export async function resume() {
+  await player?.resume();
+}
+
+export async function skip() {
+  const { deviceId } = useSpotifyStore.getState();
+  if (!deviceId) return;
+  await fetch('/api/spotify/next', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId }),
+  });
+}
+
 export function useSpotifyPlayer() {
   const store = useSpotifyStore();
-  const playerRef = useRef<SpotifyPlayer | null>(null);
 
   useEffect(() => {
     if (store.accountTier !== 'premium' || !store.isLoggedIn) return;
@@ -51,7 +85,7 @@ export function useSpotifyPlayer() {
     document.body.appendChild(script);
 
     window.onSpotifyWebPlaybackSDKReady = () => {
-      const player = new window.Spotify.Player({
+      const p = new window.Spotify.Player({
         name: 'Flowstate',
         getOAuthToken: async (cb) => {
           const token = await fetchToken();
@@ -60,16 +94,16 @@ export function useSpotifyPlayer() {
         volume: 0.5,
       });
 
-      player.addListener('ready', ({ device_id }: { device_id: string }) => {
+      p.addListener('ready', ({ device_id }: { device_id: string }) => {
         store.setDeviceId(device_id);
         store.setSdkReady(true);
       });
 
-      player.addListener('not_ready', () => {
+      p.addListener('not_ready', () => {
         store.setSdkReady(false);
       });
 
-      player.addListener('player_state_changed', (state: any) => {
+      p.addListener('player_state_changed', (state: any) => {
         if (!state) return;
         const track = state.track_window?.current_track;
         if (track) {
@@ -82,54 +116,27 @@ export function useSpotifyPlayer() {
         store.setIsPlaying(!state.paused);
       });
 
-      player.addListener('authentication_error', () => {
+      p.addListener('authentication_error', () => {
         store.setMusicError('Spotify auth error — try logging in again');
         store.setSdkReady(false);
       });
 
-      player.addListener('account_error', () => {
+      p.addListener('account_error', () => {
         store.setAccountTier('free');
         store.setSdkReady(false);
       });
 
-      player.connect();
-      playerRef.current = player;
+      p.connect();
+      player = p;
     };
 
     return () => {
-      playerRef.current?.disconnect();
+      player?.disconnect();
+      player = null;
       script.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.accountTier, store.isLoggedIn]);
 
-  const play = useCallback(async (contextUri?: string) => {
-    const { deviceId } = useSpotifyStore.getState();
-    if (!deviceId) return;
-    await fetch('/api/spotify/play', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId, contextUri }),
-    });
-  }, []);
-
-  const pause = useCallback(async () => {
-    playerRef.current?.pause();
-  }, []);
-
-  const resume = useCallback(async () => {
-    playerRef.current?.resume();
-  }, []);
-
-  const skip = useCallback(async () => {
-    const { deviceId } = useSpotifyStore.getState();
-    if (!deviceId) return;
-    await fetch('/api/spotify/next', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId }),
-    });
-  }, []);
-
-  return { play, pause, resume, skip, player: playerRef };
+  return { play, pause, resume, skip };
 }

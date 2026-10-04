@@ -12,6 +12,7 @@ interface TimerState {
   secondsLeft: number;
   totalSeconds: number;
   isRunning: boolean;
+  endsAt: number | null; // wall-clock ms when the running phase ends
   config: TimerConfig;
   completedPomodoros: number;
   dayStats: DayStats;
@@ -23,7 +24,7 @@ interface TimerState {
   start: () => void;
   pause: () => void;
   resume: () => void;
-  tick: () => boolean; // returns true if phase just ended
+  tick: () => boolean; // recomputes secondsLeft from endsAt; true if phase just ended
   reset: () => void;
   advancePhase: () => void;
   toggleSound: () => void;
@@ -31,7 +32,9 @@ interface TimerState {
   persist: () => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+// local YYYY-MM-DD, so stats roll over at the user's midnight, not UTC's
+const today = () => new Date().toLocaleDateString('en-CA');
+const endsIn = (secs: number) => Date.now() + secs * 1000;
 
 const defaultConfig = PRESETS['25-5'];
 
@@ -47,6 +50,7 @@ function loadState(): Partial<TimerState> {
     if (typeof p.totalSeconds === 'number' && p.totalSeconds > 0) result.totalSeconds = p.totalSeconds;
     if (typeof p.completedPomodoros === 'number') result.completedPomodoros = p.completedPomodoros;
     if (typeof p.soundEnabled === 'boolean') result.soundEnabled = p.soundEnabled;
+    if (typeof p.endsAt === 'number') { result.endsAt = p.endsAt; result.isRunning = true; }
     if (p.config && typeof p.config.workMinutes === 'number' && typeof p.config.breakMinutes === 'number' && typeof p.config.longBreakMinutes === 'number') {
       result.config = { workMinutes: p.config.workMinutes, breakMinutes: p.config.breakMinutes, longBreakMinutes: p.config.longBreakMinutes };
     }
@@ -66,6 +70,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   secondsLeft: defaultConfig.workMinutes * 60,
   totalSeconds: defaultConfig.workMinutes * 60,
   isRunning: false,
+  endsAt: null,
   config: defaultConfig,
   completedPomodoros: 0,
   dayStats: { date: today(), completedPomodoros: 0, totalFocusSeconds: 0 },
@@ -80,11 +85,13 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       secondsLeft: c.workMinutes * 60,
       totalSeconds: c.workMinutes * 60,
       isRunning: false,
+      endsAt: null,
     });
     get().persist();
   },
 
   setCustomWork: (minutes) => {
+    minutes = Math.max(1, Math.round(minutes)); // 1.1h * 60 = 66.00000000000001
     const breakMin = calcBreak(minutes);
     const longBreakMin = calcLongBreak(breakMin);
     const c = { workMinutes: minutes, breakMinutes: breakMin, longBreakMinutes: longBreakMin };
@@ -94,6 +101,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       secondsLeft: minutes * 60,
       totalSeconds: minutes * 60,
       isRunning: false,
+      endsAt: null,
     });
     get().persist();
   },
@@ -111,31 +119,37 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       secondsLeft: config.workMinutes * 60,
       totalSeconds: config.workMinutes * 60,
       isRunning: true,
+      endsAt: endsIn(config.workMinutes * 60),
     });
     get().persist();
   },
 
   pause: () => {
-    set({ isRunning: false });
+    get().tick();
+    set({ isRunning: false, endsAt: null });
     get().persist();
   },
 
   resume: () => {
-    set({ isRunning: true });
+    set({ isRunning: true, endsAt: endsIn(get().secondsLeft) });
     get().persist();
   },
 
+  // ponytail: derive from the wall clock — background tabs throttle setInterval to ~1/min
   tick: () => {
-    const { secondsLeft, phase } = get();
-    if (secondsLeft <= 1) {
-      set({ secondsLeft: 0, isRunning: false });
+    const { endsAt, isRunning, phase } = get();
+    if (!isRunning || endsAt === null) return false;
+    const secondsLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+    if (secondsLeft === 0) {
+      set({ secondsLeft: 0, isRunning: false, endsAt: null });
       if (phase === 'working') {
         const stats = get().dayStats;
+        const fresh = stats.date === today() ? stats : { date: today(), completedPomodoros: 0, totalFocusSeconds: 0 };
         set({
           dayStats: {
-            ...stats,
-            completedPomodoros: stats.completedPomodoros + 1,
-            totalFocusSeconds: stats.totalFocusSeconds + get().totalSeconds,
+            ...fresh,
+            completedPomodoros: fresh.completedPomodoros + 1,
+            totalFocusSeconds: fresh.totalFocusSeconds + get().totalSeconds,
           },
           completedPomodoros: get().completedPomodoros + 1,
         });
@@ -143,7 +157,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       get().persist();
       return true;
     }
-    set({ secondsLeft: secondsLeft - 1 });
+    if (secondsLeft !== get().secondsLeft) set({ secondsLeft });
     return false;
   },
 
@@ -154,7 +168,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     if (next === 'working') secs = config.workMinutes * 60;
     else if (next === 'longBreak') secs = config.longBreakMinutes * 60;
     else secs = config.breakMinutes * 60;
-    set({ phase: next, secondsLeft: secs, totalSeconds: secs, isRunning: true });
+    set({ phase: next, secondsLeft: secs, totalSeconds: secs, isRunning: true, endsAt: endsIn(secs) });
     get().persist();
   },
 
@@ -165,6 +179,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       secondsLeft: config.workMinutes * 60,
       totalSeconds: config.workMinutes * 60,
       isRunning: false,
+      endsAt: null,
     });
     get().persist();
   },
@@ -176,16 +191,14 @@ export const useTimerStore = create<TimerState>((set, get) => ({
 
   hydrate: () => {
     const saved = loadState();
-    if (Object.keys(saved).length > 0) {
-      set({ ...saved, isRunning: false });
-    }
+    if (Object.keys(saved).length > 0) set(saved);
   },
 
   persist: () => {
     if (typeof window === 'undefined') return;
-    const { phase, secondsLeft, totalSeconds, config, completedPomodoros, dayStats, soundEnabled } = get();
+    const { phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, dayStats, soundEnabled } = get();
     localStorage.setItem('flowstate-timer', JSON.stringify({
-      phase, secondsLeft, totalSeconds, config, completedPomodoros, dayStats, soundEnabled,
+      phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, dayStats, soundEnabled,
     }));
   },
 }));

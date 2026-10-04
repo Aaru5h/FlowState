@@ -28,7 +28,11 @@ export function useSpotifyAuth() {
 
   const checkSession = useCallback(async () => {
     try {
-      const res = await fetch('/api/spotify/me');
+      let res = await fetch('/api/spotify/me');
+      // access token expires after 1h; refresh so reloads don't look logged out
+      if (res.status === 401 && (await fetch('/api/spotify/refresh', { method: 'POST' })).ok) {
+        res = await fetch('/api/spotify/me');
+      }
       if (!res.ok) return;
       const data = await res.json();
       store.setLoggedIn(true);

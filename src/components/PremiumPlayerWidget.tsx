@@ -1,11 +1,10 @@
 'use client';
 import Image from "next/image";
 import { useSpotifyStore } from '@/store/spotifyStore';
-import { useSpotifyPlayer } from '@/hooks/useSpotifyPlayer';
+import { pause, resume, skip } from '@/hooks/useSpotifyPlayer';
 
 export default function PremiumPlayerWidget() {
   const { currentTrack, isPlaying, sdkReady } = useSpotifyStore();
-  const { pause, resume, skip } = useSpotifyPlayer();
 
   if (!sdkReady) {
     return <p className="text-sm text-stone-400">Connecting to Spotify...</p>;

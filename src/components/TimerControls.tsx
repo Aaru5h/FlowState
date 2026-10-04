@@ -4,7 +4,7 @@ import { PRESETS } from '@/lib/timer';
 import { useTimerStore } from '@/store/timerStore';
 
 export default function TimerControls() {
-  const { phase, isRunning, config, start, pause, resume, reset, advancePhase,
+  const { phase, isRunning, secondsLeft, config, start, pause, resume, reset, advancePhase,
           setPreset, setCustomWork, setBreakOverride, completedPomodoros,
           dayStats, soundEnabled, toggleSound } = useTimerStore();
   const [customInput, setCustomInput] = useState('');
@@ -21,7 +21,7 @@ export default function TimerControls() {
   };
 
   const isIdle = phase === 'idle';
-  const isEnded = !isRunning && !isIdle && useTimerStore.getState().secondsLeft === 0;
+  const isEnded = !isRunning && !isIdle && secondsLeft === 0;
 
   return (
     <div className="space-y-6 w-full max-w-sm">
