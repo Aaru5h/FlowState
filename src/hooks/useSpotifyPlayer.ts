@@ -125,6 +125,7 @@ export function useSpotifyPlayer() {
 
       // SDK can't run here (mobile browsers, no DRM/EME): fall back to the embed instead of hanging on "Connecting..."
       const fallback = () => {
+        store.setMusicError('Premium player can\'t run in this browser, using the basic player. Brave: enable Widevine at brave://settings/extensions and restart.');
         store.setAccountTier('free');
         store.setSdkReady(false);
       };

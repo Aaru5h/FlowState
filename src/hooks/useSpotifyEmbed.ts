@@ -45,7 +45,8 @@ export function useSpotifyEmbed(containerId: string) {
           // ponytail: Spotify serves ~30s previews when the iframe can't see a logged-in session; we can only tell the user
           ctrl.addListener('playback_update', (e: any) => {
             const d = e?.data?.duration;
-            if (d > 0 && d <= 31000) {
+            // don't clobber the more specific Premium-fallback message
+            if (d > 0 && d <= 31000 && !useSpotifyStore.getState().musicError) {
               store.setMusicError('Only 30s previews are playing — log in at open.spotify.com in this browser (Safari: turn off "Prevent cross-site tracking"), then reload.');
             }
           });
