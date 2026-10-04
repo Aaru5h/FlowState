@@ -1,10 +1,10 @@
 'use client';
 import Image from "next/image";
 import { useSpotifyStore } from '@/store/spotifyStore';
-import { pause, resume, skip } from '@/hooks/useSpotifyPlayer';
+import { play, pause, resume, skip } from '@/hooks/useSpotifyPlayer';
 
 export default function PremiumPlayerWidget() {
-  const { currentTrack, isPlaying, sdkReady } = useSpotifyStore();
+  const { currentTrack, isPlaying, sdkReady, selectedPlaylistUri } = useSpotifyStore();
 
   if (!sdkReady) {
     return <p className="text-sm text-stone-400">Connecting to Spotify...</p>;
@@ -29,7 +29,8 @@ export default function PremiumPlayerWidget() {
       </div>
       <div className="flex gap-1.5">
         <button
-          onClick={() => (isPlaying ? pause() : resume())}
+          // fresh device has nothing loaded, so resume() is a no-op: start the playlist instead
+          onClick={() => (isPlaying ? pause() : currentTrack ? resume() : play(selectedPlaylistUri ?? undefined))}
           className="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 flex items-center 
                      justify-center transition-colors text-stone-600"
         >
