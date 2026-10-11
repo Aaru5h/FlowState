@@ -5,3 +5,13 @@
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+::selection { background: #dce5d6; color: #293d24; }
+button, input, select { touch-action: manipulation; }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #526b47;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

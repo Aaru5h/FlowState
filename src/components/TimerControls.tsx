@@ -5,16 +5,15 @@ import { useTimerStore } from '@/store/timerStore';
 
 export default function TimerControls() {
   const { phase, isRunning, secondsLeft, config, start, pause, resume, reset, advancePhase,
-          setPreset, setCustomWork, setBreakOverride, completedPomodoros,
-          dayStats, soundEnabled, toggleSound } = useTimerStore();
+          setPreset, setCustomWork, setBreakOverride, soundEnabled, toggleSound } = useTimerStore();
   const [customInput, setCustomInput] = useState('');
+  const [customUnit, setCustomUnit] = useState('minutes');
   const [showCustom, setShowCustom] = useState(false);
 
   const handleCustomSubmit = () => {
     const val = parseFloat(customInput);
     if (isNaN(val) || val <= 0) return;
-    // support decimal hours: if > 5, treat as minutes; otherwise check if they meant hours
-    const minutes = val > 5 ? val : val * 60;
+    const minutes = customUnit === 'hours' ? val * 60 : val;
     setCustomWork(minutes);
     setShowCustom(false);
     setCustomInput('');
@@ -44,7 +43,7 @@ export default function TimerControls() {
             ))}
             <button
               onClick={() => setShowCustom(!showCustom)}
-              className="px-4 py-2 rounded-xl text-sm bg-white/60 text-stone-500 
+              className="px-4 py-2 rounded-xl text-sm bg-white/60 text-stone-500
                          hover:bg-white/80 border border-stone-200/50 transition-all"
             >
               Custom
@@ -59,17 +58,21 @@ export default function TimerControls() {
               <input
                 type="number"
                 step="0.5"
-                min="1"
-                placeholder="Minutes (or 1.5 = 90 min)"
+                min="0.5"
+                aria-label="Focus duration"
+                placeholder="Focus duration"
                 value={customInput}
                 onChange={(e) => setCustomInput(e.target.value)}
-                className="w-48 px-3 py-2 text-sm rounded-xl bg-white/80 border border-stone-200 
-                           text-stone-600 placeholder:text-stone-300 focus:outline-none 
+                className="w-32 px-3 py-2 text-sm rounded-xl bg-white/80 border border-stone-200
+                           text-stone-600 placeholder:text-stone-500 focus:outline-none
                            focus:ring-2 focus:ring-sage-200"
               />
+              <select aria-label="Duration unit" value={customUnit} onChange={(e) => setCustomUnit(e.target.value)} className="rounded-xl bg-white/80 px-2 py-2 text-sm text-stone-700">
+                <option value="minutes">Minutes</option><option value="hours">Hours</option>
+              </select>
               <button
                 type="submit"
-                className="px-3 py-2 text-sm rounded-xl bg-sage-100 text-sage-700 
+                className="px-3 py-2 text-sm rounded-xl bg-sage-100 text-sage-700
                            hover:bg-sage-200 transition-colors"
               >
                 Set
@@ -79,7 +82,7 @@ export default function TimerControls() {
 
           {/* Break preview */}
           <div className="text-center space-y-1">
-            <p className="text-xs text-stone-400">
+            <p className="text-xs text-stone-600">
               Break: {config.breakMinutes} min · Long break: {config.longBreakMinutes} min
             </p>
             <div className="flex gap-2 justify-center">
@@ -90,7 +93,7 @@ export default function TimerControls() {
                   className={`text-xs px-2 py-1 rounded-lg transition-all ${
                     config.breakMinutes === m
                       ? 'bg-lavender-100 text-lavender-700'
-                      : 'text-stone-300 hover:text-stone-500'
+                      : 'text-stone-500 hover:text-stone-500'
                   }`}
                 >
                   {m}m
@@ -110,7 +113,7 @@ export default function TimerControls() {
               if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
               start();
             }}
-            className="px-8 py-3 rounded-2xl bg-sage-200 text-sage-800 font-medium 
+            className="px-8 py-3 rounded-2xl bg-sage-200 text-sage-800 font-medium
                        hover:bg-sage-300 transition-all shadow-sm text-lg"
           >
             Start Focus
@@ -120,7 +123,7 @@ export default function TimerControls() {
         {isRunning && (
           <button
             onClick={pause}
-            className="px-8 py-3 rounded-2xl bg-white/80 text-stone-500 font-medium 
+            className="px-8 py-3 rounded-2xl bg-white/80 text-stone-500 font-medium
                        hover:bg-white transition-all border border-stone-200/50"
           >
             Pause
@@ -130,7 +133,7 @@ export default function TimerControls() {
         {!isRunning && !isIdle && !isEnded && (
           <button
             onClick={resume}
-            className="px-8 py-3 rounded-2xl bg-sage-200 text-sage-800 font-medium 
+            className="px-8 py-3 rounded-2xl bg-sage-200 text-sage-800 font-medium
                        hover:bg-sage-300 transition-all shadow-sm"
           >
             Resume
@@ -140,8 +143,8 @@ export default function TimerControls() {
         {isEnded && (
           <button
             onClick={advancePhase}
-            className="px-8 py-3 rounded-2xl bg-lavender-200 text-lavender-800 font-medium 
-                       hover:bg-lavender-300 transition-all shadow-sm animate-pulse"
+            className="px-8 py-3 rounded-2xl bg-lavender-200 text-lavender-800 font-medium
+                       hover:bg-lavender-300 transition-all shadow-sm"
           >
             {phase === 'working' ? 'Start Break' : 'Start Focus'}
           </button>
@@ -150,23 +153,17 @@ export default function TimerControls() {
         {!isIdle && (
           <button
             onClick={reset}
-            className="px-4 py-3 rounded-2xl text-stone-400 hover:text-stone-600 transition-colors"
+            className="px-4 py-3 rounded-2xl text-stone-600 hover:text-stone-600 transition-colors"
           >
             Reset
           </button>
         )}
       </div>
 
-      {/* Session stats */}
-      <div className="flex gap-4 justify-center text-xs text-stone-400">
-        <span>Session {(completedPomodoros % 4) + 1}/4</span>
-        <span>·</span>
-        <span>{dayStats.completedPomodoros} pomodoro{dayStats.completedPomodoros === 1 ? '' : 's'} today</span>
-        <span>·</span>
-        <span>{Math.round(dayStats.totalFocusSeconds / 60)} min focused</span>
-        <span>·</span>
-        <button onClick={toggleSound} className="hover:text-stone-600 transition-colors">
-          {soundEnabled ? '🔔' : '🔕'}
+      <div className="flex justify-center">
+        <button onClick={toggleSound} aria-pressed={soundEnabled}
+          className="text-sm px-3 py-2 rounded-xl text-stone-600 hover:bg-white/70 transition-colors">
+          Sound {soundEnabled ? 'on' : 'off'}
         </button>
       </div>
     </div>

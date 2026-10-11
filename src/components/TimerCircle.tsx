@@ -24,7 +24,7 @@ export default function TimerCircle({ secondsLeft, totalSeconds, phase, isRunnin
 
   return (
     <div className="relative flex items-center justify-center">
-      <svg width="320" height="320" className="transform -rotate-90">
+      <svg width="320" height="320" viewBox="0 0 320 320" aria-hidden="true" className="w-full max-w-[320px] transform -rotate-90">
         <circle
           cx="160" cy="160" r={radius}
           fill="none"
@@ -46,10 +46,10 @@ export default function TimerCircle({ secondsLeft, totalSeconds, phase, isRunnin
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-6xl font-light tracking-wider text-stone-700">
+        <span className="text-6xl tabular-nums font-light tracking-wider text-stone-700">
           {formatTime(secondsLeft)}
         </span>
-        <span className="text-sm text-stone-400 mt-2 capitalize">
+        <span className="text-sm text-stone-600 mt-2 capitalize">
           {phase === 'idle' ? 'Ready' : phase === 'longBreak' ? 'Long Break' : phase}
         </span>
         {isRunning && (

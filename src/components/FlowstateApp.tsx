@@ -7,6 +7,7 @@ import { usePlaybackSync } from '@/hooks/usePlaybackSync';
 import TimerCircle from './TimerCircle';
 import TimerControls from './TimerControls';
 import MusicPanel from './MusicPanel';
+import FocusStats from './FocusStats';
 import { useSpotifyStore } from '@/store/spotifyStore';
 
 export default function FlowstateApp() {
@@ -26,7 +27,7 @@ export default function FlowstateApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream-50 via-sage-50 to-lavender-50 
-                    flex flex-col items-center justify-center p-6 gap-8">
+                    flex flex-col items-center justify-center px-4 py-8 sm:p-6 gap-6">
       {/* Header */}
       <h1 className="text-2xl font-light text-stone-500 tracking-widest">FLOWSTATE</h1>
 
@@ -40,6 +41,8 @@ export default function FlowstateApp() {
 
       {/* Controls */}
       <TimerControls />
+
+      <FocusStats />
 
       {/* Music */}
       <div className="w-full max-w-sm">

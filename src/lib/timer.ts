@@ -24,7 +24,7 @@ export function calcLongBreak(breakMinutes: number): number {
 
 export function nextPhase(current: SessionPhase, completedPomodoros: number): SessionPhase {
   if (current === 'idle' || current === 'break' || current === 'longBreak') return 'working';
-  if ((completedPomodoros + 1) % 4 === 0) return 'longBreak';
+  if (completedPomodoros > 0 && completedPomodoros % 4 === 0) return 'longBreak';
   return 'break';
 }
 
