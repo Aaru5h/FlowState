@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { prepareAlarm } from '@/lib/sounds';
 import { SessionPhase, TimerConfig, PRESETS, calcBreak, calcLongBreak, nextPhase } from '@/lib/timer';
 
 import { DayStats, dateKey, updateDay, recordFocus } from '@/lib/stats';
@@ -116,6 +117,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   },
 
   start: () => {
+    prepareAlarm();
     const { config } = get();
     set({
       history: updateDay(get().history, today(), { sessions: 1 }),
@@ -135,6 +137,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   },
 
   resume: () => {
+    prepareAlarm();
     set({ isRunning: true, endsAt: endsIn(get().secondsLeft) });
     get().persist();
   },
@@ -165,6 +168,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   },
 
   advancePhase: () => {
+    prepareAlarm();
     const { phase, completedPomodoros, config } = get();
     const next = nextPhase(phase, completedPomodoros);
     let secs: number;

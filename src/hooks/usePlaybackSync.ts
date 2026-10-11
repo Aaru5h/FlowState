@@ -21,6 +21,8 @@ export function usePlaybackSync(
       prevRunningRef.current = state.isRunning;
 
       if (!phaseChanged && !runningChanged) return;
+      // Completion owns pause + alarm ordering in alertSessionEnd.
+      if (!state.isRunning && state.secondsLeft === 0 && state.phase !== 'idle') return;
 
       const spotify = useSpotifyStore.getState();
       if (!spotify.isLoggedIn) return;

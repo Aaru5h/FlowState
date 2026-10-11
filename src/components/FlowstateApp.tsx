@@ -42,12 +42,12 @@ export default function FlowstateApp() {
       {/* Controls */}
       <TimerControls />
 
-      <FocusStats />
-
       {/* Music */}
       <div className="w-full max-w-sm">
         <MusicPanel />
       </div>
+
+      <FocusStats />
     </div>
   );
 }

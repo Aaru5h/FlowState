@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useTimerStore } from '@/store/timerStore';
-import { playChime } from '@/lib/sounds';
+import { alertSessionEnd } from '@/lib/sessionAlert';
 
 export function useTimer() {
   const store = useTimerStore();
@@ -16,7 +16,7 @@ export function useTimer() {
     const onTick = () => {
       const ended = useTimerStore.getState().tick();
       if (!ended) return;
-      if (useTimerStore.getState().soundEnabled) playChime();
+      void alertSessionEnd(useTimerStore.getState().soundEnabled);
       if ('Notification' in window && Notification.permission === 'granted') {
         const phase = useTimerStore.getState().phase;
         new Notification('Flowstate', {
