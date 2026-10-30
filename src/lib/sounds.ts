@@ -1,5 +1,7 @@
 // Unlock audio on a timer button click, then reuse it when the timer finishes.
 let audioContext: AudioContext | null = null;
+let alarmSource: AudioBufferSourceNode | null = null;
+let alarmGain: GainNode | null = null;
 
 export function prepareAlarm() {
   try {
@@ -10,32 +12,46 @@ export function prepareAlarm() {
   }
 }
 
-export async function playChime() {
+export async function playAlarm() {
   prepareAlarm();
   const ctx = audioContext;
-  if (!ctx) return;
+  if (!ctx || alarmSource) return;
   try {
     if (ctx.state === 'suspended') await ctx.resume();
-    // Three clear two-tone pulses, independent of Spotify playback.
-    const start = ctx.currentTime;
-    for (let pulse = 0; pulse < 3; pulse++) {
-      for (let note = 0; note < 2; note++) {
-        const at = start + pulse * 0.9 + note * 0.22;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.value = note === 0 ? 660 : 880;
-        gain.gain.setValueAtTime(0, at);
-        gain.gain.linearRampToValueAtTime(0.3, at + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, at + 0.35);
-        osc.start(at);
-        osc.stop(at + 0.36);
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+    const sampleRate = ctx.sampleRate;
+    const cycleSeconds = 1.8;
+    const buffer = ctx.createBuffer(1, Math.ceil(sampleRate * cycleSeconds), sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const time = i / sampleRate;
+      const pulseTime = time % 0.6;
+      if (pulseTime < 0.42) {
+        const attack = Math.min(1, pulseTime / 0.015);
+        const release = Math.min(1, (0.42 - pulseTime) / 0.06);
+        const envelope = Math.max(0, Math.min(attack, release));
+        const frequency = time % 1.2 < 0.6 ? 740 : 960;
+        data[i] = Math.sin(2 * Math.PI * frequency * time) * envelope;
       }
     }
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    source.loop = true;
+    gain.gain.value = 0.72;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    alarmSource = source;
+    alarmGain = gain;
   } catch {
     // Audio restrictions should not prevent the timer completing.
   }
+}
+
+export function stopAlarm() {
+  try { alarmSource?.stop(); } catch { /* The source may already be stopped. */ }
+  alarmSource?.disconnect();
+  alarmGain?.disconnect();
+  alarmSource = null;
+  alarmGain = null;
 }

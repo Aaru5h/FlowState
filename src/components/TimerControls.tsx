@@ -5,7 +5,8 @@ import { useTimerStore } from '@/store/timerStore';
 
 export default function TimerControls() {
   const { phase, isRunning, secondsLeft, config, start, pause, resume, reset, advancePhase,
-          setPreset, setCustomWork, setBreakOverride, soundEnabled, toggleSound } = useTimerStore();
+          setPreset, setCustomWork, setBreakOverride, soundEnabled, toggleSound,
+          isAlarmRinging, dismissAlarm } = useTimerStore();
   const [customInput, setCustomInput] = useState('');
   const [customUnit, setCustomUnit] = useState('minutes');
   const [showCustom, setShowCustom] = useState(false);
@@ -105,8 +106,18 @@ export default function TimerControls() {
       )}
 
       {/* Main action buttons */}
-      <div className="flex gap-3 justify-center">
-        {isIdle && (
+      <div className="flex gap-3 justify-center" aria-live="assertive">
+        {isAlarmRinging && (
+          <button
+            autoFocus
+            onClick={dismissAlarm}
+            className="min-h-12 px-8 py-3 rounded-2xl bg-lavender-300 text-lavender-900 font-semibold
+                       hover:bg-lavender-400 transition-colors shadow-sm text-lg"
+          >
+            Stop alarm
+          </button>
+        )}
+        {isIdle && !isAlarmRinging && (
           <button
             onClick={() => {
               // ask on a click: browsers ignore or quietly block permission prompts fired on page load
@@ -120,7 +131,7 @@ export default function TimerControls() {
           </button>
         )}
 
-        {isRunning && (
+        {isRunning && !isAlarmRinging && (
           <button
             onClick={pause}
             className="px-8 py-3 rounded-2xl bg-white/80 text-stone-500 font-medium
@@ -130,7 +141,7 @@ export default function TimerControls() {
           </button>
         )}
 
-        {!isRunning && !isIdle && !isEnded && (
+        {!isRunning && !isIdle && !isEnded && !isAlarmRinging && (
           <button
             onClick={resume}
             className="px-8 py-3 rounded-2xl bg-sage-200 text-sage-800 font-medium
@@ -140,7 +151,7 @@ export default function TimerControls() {
           </button>
         )}
 
-        {isEnded && (
+        {isEnded && !isAlarmRinging && (
           <button
             onClick={advancePhase}
             className="px-8 py-3 rounded-2xl bg-lavender-200 text-lavender-800 font-medium
@@ -150,7 +161,7 @@ export default function TimerControls() {
           </button>
         )}
 
-        {!isIdle && (
+        {!isIdle && !isAlarmRinging && (
           <button
             onClick={reset}
             className="px-4 py-3 rounded-2xl text-stone-600 hover:text-stone-600 transition-colors"

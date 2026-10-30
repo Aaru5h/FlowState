@@ -1,6 +1,6 @@
 import { pause as pausePremium } from '@/hooks/useSpotifyPlayer';
 import { pause as pauseEmbed } from '@/hooks/useSpotifyEmbed';
-import { playChime } from '@/lib/sounds';
+import { playAlarm } from '@/lib/sounds';
 
 export async function alertSessionEnd(soundEnabled: boolean) {
   // Pause both controllers: either can be active during a player fallback.
@@ -16,5 +16,5 @@ export async function alertSessionEnd(soundEnabled: boolean) {
   } finally {
     if (timeout) clearTimeout(timeout);
   }
-  if (soundEnabled) await playChime();
+  if (soundEnabled) await playAlarm();
 }

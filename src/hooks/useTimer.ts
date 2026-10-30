@@ -12,11 +12,14 @@ export function useTimer() {
   }, []);
 
   useEffect(() => {
+    if (store.isAlarmRinging) void alertSessionEnd(store.soundEnabled);
+  }, [store.isAlarmRinging, store.soundEnabled]);
+
+  useEffect(() => {
     if (!store.isRunning) return;
     const onTick = () => {
       const ended = useTimerStore.getState().tick();
       if (!ended) return;
-      void alertSessionEnd(useTimerStore.getState().soundEnabled);
       if ('Notification' in window && Notification.permission === 'granted') {
         const phase = useTimerStore.getState().phase;
         new Notification('Flowstate', {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { prepareAlarm } from '@/lib/sounds';
+import { prepareAlarm, stopAlarm } from '@/lib/sounds';
 import { SessionPhase, TimerConfig, PRESETS, calcBreak, calcLongBreak, nextPhase } from '@/lib/timer';
 
 import { DayStats, dateKey, updateDay, recordFocus } from '@/lib/stats';
@@ -14,6 +14,7 @@ interface TimerState {
   completedPomodoros: number;
   history: DayStats[];
   soundEnabled: boolean;
+  isAlarmRinging: boolean;
 
   setPreset: (key: string) => void;
   setCustomWork: (minutes: number) => void;
@@ -25,6 +26,7 @@ interface TimerState {
   reset: () => void;
   advancePhase: () => void;
   toggleSound: () => void;
+  dismissAlarm: () => void;
   hydrate: () => void;
   persist: () => void;
 }
@@ -47,6 +49,7 @@ function loadState(): Partial<TimerState> {
     if (typeof p.totalSeconds === 'number' && p.totalSeconds > 0) result.totalSeconds = p.totalSeconds;
     if (typeof p.completedPomodoros === 'number') result.completedPomodoros = p.completedPomodoros;
     if (typeof p.soundEnabled === 'boolean') result.soundEnabled = p.soundEnabled;
+    if (typeof p.isAlarmRinging === 'boolean') result.isAlarmRinging = p.isAlarmRinging && p.soundEnabled !== false;
     if (typeof p.endsAt === 'number') { result.endsAt = p.endsAt; result.isRunning = true; }
     if (p.config && typeof p.config.workMinutes === 'number' && typeof p.config.breakMinutes === 'number' && typeof p.config.longBreakMinutes === 'number') {
       result.config = { workMinutes: p.config.workMinutes, breakMinutes: p.config.breakMinutes, longBreakMinutes: p.config.longBreakMinutes };
@@ -77,6 +80,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   completedPomodoros: 0,
   history: [],
   soundEnabled: true,
+  isAlarmRinging: false,
 
   setPreset: (key) => {
     get().tick();
@@ -156,6 +160,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
         updatedHistory = updateDay(updatedHistory, dateKey(new Date(endsAt)), { completedPomodoros: 1 });
       }
       set({ secondsLeft: 0, isRunning: false, endsAt: null, history: updatedHistory,
+        isAlarmRinging: get().soundEnabled,
         completedPomodoros: get().completedPomodoros + (phase === 'working' ? 1 : 0) });
       get().persist();
       return true;
@@ -193,7 +198,15 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   },
 
   toggleSound: () => {
-    set({ soundEnabled: !get().soundEnabled });
+    const soundEnabled = !get().soundEnabled;
+    if (!soundEnabled) stopAlarm();
+    set({ soundEnabled, isAlarmRinging: soundEnabled ? get().isAlarmRinging : false });
+    get().persist();
+  },
+
+  dismissAlarm: () => {
+    stopAlarm();
+    set({ isAlarmRinging: false });
     get().persist();
   },
 
@@ -204,9 +217,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
 
   persist: () => {
     if (typeof window === 'undefined') return;
-    const { phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, history, soundEnabled } = get();
+    const { phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, history, soundEnabled, isAlarmRinging } = get();
     localStorage.setItem('flowstate-timer', JSON.stringify({
-      phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, history, soundEnabled,
+      phase, secondsLeft, totalSeconds, endsAt, config, completedPomodoros, history, soundEnabled, isAlarmRinging,
     }));
   },
 }));
